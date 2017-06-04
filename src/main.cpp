@@ -129,6 +129,9 @@ int main()
                     double psi = j[1]["psi"];
                     double v = j[1]["speed"];
 
+                    double delta = j[1]["steering_angle"];
+                    double acceleration = j[1]["throttle"];
+
                     int timenow = clock();
                     delt = timenow-timelast;
 
@@ -149,7 +152,7 @@ int main()
                     Eigen::VectorXd actuators(2);
                     actuators << previous_s, previous_a;
 
-                    int Nsize = 25;
+                    int Nsize = 10;
 
                     auto local_xy = mpc.Transform(ptsx, ptsy, initstate);
 
@@ -191,7 +194,19 @@ int main()
 
                     Eigen::VectorXd state(6);
                     // px, py, psi, speed, cte, epsi
-                    state << 0, 0, 0, v, cte, epsi;
+
+                    // kinematically predict 100ms in the future path and then solve
+                    double vms = v*0.44704; // velocity in m/s
+                    double latency_dt = 0.1; // latency time step
+                    double lpsi = delta / deg2rad(25); // convert from psi = [-1 1] to lspi = [-25 25] degrees
+                    double lpx = vms*latency_dt*cos(lpsi);
+                    double lpy = vms*latency_dt*sin(lpsi);
+                    psi = 0; // car yaw wrt to itself is always zero
+                    // v - no change, assume car does not accelerate in 100ms
+                    epsi = (vms*lpsi*latency_dt)/2.67;
+                    cte = coeffs[0] + vms*sin(epsi)*latency_dt;
+
+                    state << lpx, lpy, psi, v, cte, epsi;
 
                     // Solve
                     auto opt_sol = mpc.Solve(state, coeffs, slim);

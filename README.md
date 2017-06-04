@@ -1,3 +1,27 @@
+## 5/3/2017 Update - added latency handling
+
+To deal with the 0.1s latency, I kinematically advanced the state by 0.1s in the direction of travel and then passed the state to the solver. This is done using the following equations:
+
+Note that ```psi``` is 0 because we are working in the local coordinates of the car and the yaw of the car with respect to itself is zero.
+
+I also assumed that the car does not change velocity (accelerate or brake) over the next 100ms. 
+
+```
+double vms = v*0.44704; // velocity in m/s
+double latency_dt = 0.1; // latency time step
+double lpsi = delta / deg2rad(25); // convert from psi = [-1 1] to lspi = [-25 25] degrees
+double lpx = vms*latency_dt*cos(lpsi);
+double lpy = vms*latency_dt*sin(lpsi);
+psi = 0; // car yaw wrt to itself is always zero
+// v - no change, assume car does not accelerate in 100ms
+epsi = (vms*lpsi*latency_dt)/2.67;
+cte = coeffs[0] + vms*sin(epsi)*latency_dt;
+
+state << lpx, lpy, psi, v, cte, epsi;
+```
+
+---
+
 ## The Model
 
 I used the kinematical model covered in the lectures:
